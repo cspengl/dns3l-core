@@ -57,7 +57,6 @@ type OIDCServerInfoAuth struct {
 }
 
 func createNewOIDCBinding(binding *OIDCBinding, issuer string, onStartup bool) error {
-
 	var dialContext func(ctx context.Context, network string, addr string) (net.Conn, error)
 
 	if binding.TCPTimeout != 0 {
@@ -116,11 +115,9 @@ func (h *OIDCHandler) Init() error {
 	}
 
 	return nil
-
 }
 
 func (h *OIDCHandler) GetServerInfoAuth() ServerInfoAuth {
-
 	delim := h.GroupsDomainDelimiter
 	if delim == "" {
 		delim = "." //. is default
@@ -133,7 +130,6 @@ func (h *OIDCHandler) GetServerInfoAuth() ServerInfoAuth {
 }
 
 func (h *OIDCHandler) selectIssuer(token string) (*OIDCBinding, string, error) {
-
 	issuerURL, err := getIssuerURL(token)
 	if err != nil {
 		return nil, "", err
@@ -145,11 +141,9 @@ func (h *OIDCHandler) selectIssuer(token string) (*OIDCBinding, string, error) {
 	}
 
 	return binding, issuerURL, nil
-
 }
 
 func (h *OIDCHandler) GetAnonymousInfo() *types.DefaultAuthorizationInfo {
-
 	return &types.DefaultAuthorizationInfo{
 		DomainsAllowed:        []string{},
 		AuthorizationDisabled: false,
@@ -158,11 +152,9 @@ func (h *OIDCHandler) GetAnonymousInfo() *types.DefaultAuthorizationInfo {
 		UserInfo:              &types.UserInfo{Name: "anonymous", Email: h.AuthnDisabledEmail},
 		ReadAnyPublicAllowed:  false,
 	}
-
 }
 
 func (h *OIDCHandler) AuthnGetAuthzInfo(r *http.Request) (types.AuthorizationInfo, error) {
-
 	rinfo, err := h.authnGetAuthzInfoRaw(r)
 
 	if err == nil {
@@ -170,11 +162,9 @@ func (h *OIDCHandler) AuthnGetAuthzInfo(r *http.Request) (types.AuthorizationInf
 	}
 
 	return rinfo, err
-
 }
 
 func (h *OIDCHandler) authnGetAuthzInfoRaw(r *http.Request) (types.AuthorizationInfo, error) {
-
 	if h.AuthnDisabled {
 		disinfo := h.GetAnonymousInfo()
 		disinfo.AuthorizationDisabled = true
@@ -201,7 +191,7 @@ func (h *OIDCHandler) authnGetAuthzInfoRaw(r *http.Request) (types.Authorization
 	}
 
 	if issuer.provider == nil {
-		//the OIDC client has not been set on startup, e.g. due to an error
+		// the OIDC client has not been set on startup, e.g. due to an error
 		err = createNewOIDCBinding(issuer, issuerURL, false)
 		if err != nil {
 			return nil, fmt.Errorf("problem initializing OIDC client: %w", err)
@@ -230,7 +220,7 @@ func (h *OIDCHandler) authnGetAuthzInfoRaw(r *http.Request) (types.Authorization
 	}
 
 	err = h.validate.StructFiltered(cinfo, func(ns []byte) bool {
-		//fmt.Printf("VALIDATION: %s\n", ns)
+		// fmt.Printf("VALIDATION: %s\n", ns)
 		return false
 	})
 	if err != nil {
@@ -250,8 +240,8 @@ func (h *OIDCHandler) authnGetAuthzInfoRaw(r *http.Request) (types.Authorization
 	uname := userinfo.GetPreferredName()
 
 	if len(h.InjectGroups) > 0 {
-		//This is a quirks mode for OIDC environments not offering
-		//groups, e.g. test beds. Normally not used.
+		// This is a quirks mode for OIDC environments not offering
+		// groups, e.g. test beds. Normally not used.
 		groups, exists := h.InjectGroups[uname]
 		if exists {
 			cinfo.Groups = append(cinfo.Groups, groups...)
@@ -273,7 +263,7 @@ func (h *OIDCHandler) authnGetAuthzInfoRaw(r *http.Request) (types.Authorization
 		domain, valid := h.groupsToDomain(grp)
 
 		if !valid {
-			//e.g. does not have the prefix, silently ignore it
+			// e.g. does not have the prefix, silently ignore it
 			continue
 		}
 
@@ -296,11 +286,9 @@ func (h *OIDCHandler) authnGetAuthzInfoRaw(r *http.Request) (types.Authorization
 	}
 
 	return authzinfo, nil
-
 }
 
 func (h *OIDCHandler) groupsToDomain(group string) (string, bool) {
-
 	if !strings.HasPrefix(group, h.GroupsPrefix) {
 		return "", false
 	}
@@ -312,15 +300,41 @@ func (h *OIDCHandler) groupsToDomain(group string) (string, bool) {
 	}
 
 	if h.GroupsDomainDelimiter != "" && h.GroupsDomainDelimiter != "." {
-
-		group = strings.ReplaceAll(group, h.GroupsDomainDelimiter, ".") //corner cases where we need an underscore are removed
-
+		group = strings.ReplaceAll(group, h.GroupsDomainDelimiter, ".") // corner cases where we need an underscore are removed
 	}
 	return group, true
 }
 
-func GetBearerToken(r *http.Request) (string, error) {
+func (h *OIDCHandler) GetHealth() map[string]util.Health {
+	healths := make(map[string]util.Health)
 
+	if h.AuthnDisabled && h.AuthzDisabled {
+		return healths
+	}
+
+	for issuer, binding := range h.OIDCBindings {
+		var message string
+		healthy, err := util.CheckHealth(
+			util.CheckDNSResolution(issuer),
+			util.CheckTCPConnection(issuer),
+			util.CheckTLSConnection(issuer, binding.HTTPInsecureSkipVerify),
+		)
+		if err != nil {
+			message = err.Error()
+		}
+		bindingHealth := util.Health{
+			Endpoint: issuer,
+			Healthy:  healthy,
+			Message:  message,
+		}
+
+		healths[issuer] = bindingHealth
+	}
+
+	return healths
+}
+
+func GetBearerToken(r *http.Request) (string, error) {
 	hdr := r.Header.Get("authorization")
 
 	if hdr == "" {
@@ -334,5 +348,4 @@ func GetBearerToken(r *http.Request) (string, error) {
 	}
 
 	return spl[1], nil
-
 }

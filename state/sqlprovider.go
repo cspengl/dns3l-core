@@ -34,8 +34,9 @@ type SQLDBProviderDefault struct {
 	db *sql.DB
 }
 
-func (c *SQLDBProviderDefault) Init() error {
+var _ util.HealthCheckable = (*SQLDBProviderDefault)(nil)
 
+func (c *SQLDBProviderDefault) Init() error {
 	if c.db != nil {
 		log.Warn("Unnecessary init, DB already inited.")
 		return nil
@@ -52,7 +53,6 @@ func (c *SQLDBProviderDefault) Init() error {
 
 	c.db = db
 	return nil
-
 }
 
 func (c *SQLDBProviderDefault) checkInited() error {
@@ -74,12 +74,12 @@ func (c *SQLDBProviderDefault) GetType() string {
 }
 
 func getAnonDBDSN(inputdsn string) (string, string, error) {
-	dsn, err := mysql.ParseDSN(inputdsn) //is mysql code, but should work with all DSN-based SQL DBs
+	dsn, err := mysql.ParseDSN(inputdsn) // is mysql code, but should work with all DSN-based SQL DBs
 	if err != nil {
 		return "", "", err
 	}
 	oldDBName := dsn.DBName
-	dsn.DBName = "" //because it does not yet exist we cannot connect to the future DB
+	dsn.DBName = "" // because it does not yet exist we cannot connect to the future DB
 	return dsn.FormatDSN(), oldDBName, nil
 }
 
@@ -87,8 +87,7 @@ func getAnonDBDSN(inputdsn string) (string, string, error) {
 // The second parameter is the configured database
 // name to which the connection is NOT bound.
 func (c *SQLDBProviderDefault) GetAnonDBConn() (*sql.DB, string, error) {
-
-	//DB creation cannot be done over the go MySQL abstraction so we need a quirks here.
+	// DB creation cannot be done over the go MySQL abstraction so we need a quirks here.
 	anondsn, dbname, err := getAnonDBDSN(c.URL)
 	if err != nil {
 		return nil, "", err
@@ -117,7 +116,6 @@ func (c *SQLDBProviderDefault) GetAnonDBConn() (*sql.DB, string, error) {
 // Creates the database before setting tables.
 // Returns no error if database already exists.
 func (c *SQLDBProviderDefault) CreateDB() error {
-
 	conn, dbname, err := c.GetAnonDBConn()
 	if err != nil {
 		return err
@@ -154,7 +152,7 @@ func (c *SQLDBProviderDefault) GetDBConn() (*sql.DB, error) {
 }
 
 func (c *SQLDBProviderDefault) executeDriverSpecificInit(db *sql.DB) error {
-	//Nothing to do at the moment
+	// Nothing to do at the moment
 	return nil
 }
 
@@ -173,6 +171,23 @@ func (c *SQLDBProviderDefault) TestDBConn() error {
 	log.Debug("Successfully tested DB connection")
 
 	return nil
+}
+
+func (c *SQLDBProviderDefault) GetHealth() util.Health {
+	healthy, err := util.CheckHealth(
+		func() (bool, error) {
+			err := c.TestDBConn()
+			if err != nil {
+				return false, fmt.Errorf("failed to connect to database: %w", err)
+			}
+			return true, nil
+		},
+	)
+	return util.Health{
+		Healthy:  healthy,
+		Message:  err.Error(),
+		Endpoint: c.URL,
+	}
 }
 
 func (c *SQLDBProviderDefault) DBName(name string) string {

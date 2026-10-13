@@ -35,7 +35,7 @@ func CatchPanic(fu func() error) (err error) {
 	return
 }
 
-// this would be nice in the errors lib...
+// UnwrapMultiErr would be nice in the errors lib...
 func UnwrapMultiErr(err error) []error {
 	u, ok := err.(interface {
 		Unwrap() []error

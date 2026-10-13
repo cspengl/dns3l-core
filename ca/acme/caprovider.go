@@ -20,7 +20,6 @@ type CAProvider struct {
 }
 
 func (p *CAProvider) GetInfo() *types.CAProviderInfo {
-
 	return &types.CAProviderInfo{
 		Name:        p.C.Name,
 		Type:        p.C.CAType,
@@ -30,11 +29,9 @@ func (p *CAProvider) GetInfo() *types.CAProviderInfo {
 		Roots:       p.C.Roots,
 		IsAcme:      true,
 	}
-
 }
 
 func (p *CAProvider) Init(c types.ProviderConfigurationContext) error {
-
 	p.ID = c.GetCAID()
 	p.Ctxt = c
 
@@ -59,7 +56,23 @@ func (p *CAProvider) Init(c types.ProviderConfigurationContext) error {
 	log.Debugf("ACME CA provider initialized.")
 
 	return nil
+}
 
+func (p *CAProvider) GetHealth() util.Health {
+	var message string
+	healthy, err := util.CheckHealth(
+		util.CheckDNSResolution(p.C.URL),
+		util.CheckTCPConnection(p.C.URL),
+		util.CheckTLSConnection(p.C.URL, false),
+	)
+	if err != nil {
+		message = err.Error()
+	}
+	return util.Health{
+		Healthy:  healthy,
+		Message:  message,
+		Endpoint: p.C.URL,
+	}
 }
 
 func makeACMEStateManager(c types.ProviderConfigurationContext) (ACMEStateManager, error) {
@@ -72,9 +85,7 @@ func makeACMEStateManager(c types.ProviderConfigurationContext) (ACMEStateManage
 }
 
 func (p *CAProvider) IsEnabled() bool {
-
 	return !p.C.Disabled
-
 }
 
 func (p *CAProvider) PrecheckClaimCertificate(cinfo *types.CertificateClaimInfo) error {
@@ -94,7 +105,6 @@ func (p *CAProvider) PrecheckClaimCertificate(cinfo *types.CertificateClaimInfo)
 }
 
 func (p *CAProvider) ClaimCertificate(cinfo *types.CertificateClaimInfo) error {
-
 	acmeuser := p.userScheme.GetUserFor(cinfo.Name, cinfo.IssuedBy)
 
 	ttl, err := cacmn.GetTTL(cinfo, p.C.TTL)
@@ -104,43 +114,36 @@ func (p *CAProvider) ClaimCertificate(cinfo *types.CertificateClaimInfo) error {
 
 	return p.engine.TriggerUpdate(acmeuser, cinfo.Name, cinfo.Domains,
 		cinfo.IssuedBy, ttl, true)
-
 }
 
 func (p *CAProvider) RenewCertificate(cinfo *types.CertificateRenewInfo) error {
-
 	if p.ID != cinfo.CAID {
 		return &common.InvalidInputError{Msg: fmt.Sprintf(
 			"Certificate to renew (caID '%s') does not belong to CA provider '%s'", cinfo.CAID, p.ID)}
 	}
 
 	return p.engine.TriggerUpdate("", cinfo.CertKey, nil, nil, cinfo.TTLSelected, false)
-
 }
 
 func (p *CAProvider) RevokeCertificate(keyID string, crt *types.CACertInfo) error {
-
 	acmeuser := p.userScheme.GetUserFor(crt.Name, crt.IssuedBy)
 
 	log.WithField("keyID", keyID).Debug("Revoking certificate...")
 
 	return p.engine.Revoke(acmeuser, crt.CertPEM)
-
 }
 
 func (p *CAProvider) CleanupAfterDeletion(keyID string, crt *types.CACertInfo) error {
-
-	//TODO check this func to be executed only if actual deletion occurred.
+	// TODO check this func to be executed only if actual deletion occurred.
 
 	acmeuser, err := p.userScheme.GetUserToDelete(keyID, crt.IssuedBy, p.Ctxt)
 	if err != nil {
 		return err
 	}
 	if acmeuser == "" {
-		//shall not be deleted
+		// shall not be deleted
 		return nil
 	}
 
 	return p.engine.DeleteACMEUser(acmeuser)
-
 }

@@ -2,6 +2,7 @@ package infblx
 
 import (
 	"github.com/dns3l/dns3l-core/dns/types"
+	"github.com/dns3l/dns3l-core/util"
 
 	dnscommon "github.com/dns3l/dns3l-core/dns/common"
 	ibclient "github.com/infobloxopen/infoblox-go-client/v2"
@@ -56,4 +57,26 @@ func (p *DNSProvider) GetPrecheckConfig() *types.PrecheckConfig {
 	conf := &p.C.PreCheck
 	conf.SetDefaults()
 	return conf
+}
+
+
+func (p *DNSProvider) GetHealth() util.Health {
+	healthy, err := util.CheckHealth(
+		util.CheckDNSResolution(p.C.Host),
+		util.CheckTCPConnection(p.C.Host),
+		util.CheckTLSConnection(p.C.Host, p.C.SSLVerify == "true"),
+		// Auth check
+		func() (bool, error) {
+			_, err := p.getIBConnector()
+			if err != nil {
+				return false, err
+			}
+			return true, nil
+		},
+	)
+	return util.Health{
+		Healthy:  healthy,
+		Message:  err.Error(),
+		Endpoint: p.C.Host,
+	}
 }

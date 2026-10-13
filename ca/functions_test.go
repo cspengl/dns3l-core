@@ -1,9 +1,8 @@
 package ca
 
 import (
-	"time"
-
 	"testing"
+	"time"
 
 	"github.com/dns3l/dns3l-core/ca/types"
 	"github.com/dns3l/dns3l-core/renew"
@@ -28,6 +27,12 @@ func (p *fakeCAProvider) CleanupAfterDeletion(string, *types.CACertInfo) error {
 	return nil
 }
 
+func (p *fakeCAProvider) GetHealth() util.Health {
+	return util.Health{
+		Healthy: true,
+	}
+}
+
 // fakeStateManager / fakeSession provide a state backend in which the requested
 // certificate exists and is deleted without error.
 type fakeStateManager struct{}
@@ -47,22 +52,29 @@ func (s *fakeSession) GetCACertByID(keyID string, caID string) (*types.CACertInf
 func (s *fakeSession) DelCACertByID(keyID string, caID string) error { return nil }
 
 func (s *fakeSession) ListCACerts(string, string, []string, *util.PaginationInfo,
-	string, string) ([]types.CACertInfo, error) {
+	string, string,
+) ([]types.CACertInfo, error) {
 	panic("not used in this test")
 }
+
 func (s *fakeSession) PutCACertData(string, string, *types.CACertInfo, string, string) error {
 	panic("not used in this test")
 }
+
 func (s *fakeSession) UpdateCACertData(string, string, time.Time, time.Time, time.Time,
-	time.Time, string, string) error {
+	time.Time, string, string,
+) error {
 	panic("not used in this test")
 }
+
 func (s *fakeSession) GetResource(string, string, bool, string) (string, error) {
 	panic("not used in this test")
 }
+
 func (s *fakeSession) GetResources(string, string, bool, ...string) ([]string, error) {
 	panic("not used in this test")
 }
+
 func (s *fakeSession) GetNumberOfCerts(string, bool, time.Time) (uint, error) {
 	panic("not used in this test")
 }
@@ -70,18 +82,23 @@ func (s *fakeSession) DeleteCertAllCA(string) error { panic("not used in this te
 func (s *fakeSession) ListExpired(time.Time, uint) ([]types.CertificateRenewInfo, error) {
 	panic("not used in this test")
 }
+
 func (s *fakeSession) ListToRenew(time.Time, uint) ([]types.CertificateRenewInfo, error) {
 	panic("not used in this test")
 }
+
 func (s *fakeSession) GetDomains(string, string) ([]string, error) {
 	panic("not used in this test")
 }
+
 func (s *fakeSession) UserHasCerts(*authtypes.UserInfo, string) (bool, error) {
 	panic("not used in this test")
 }
+
 func (s *fakeSession) GetLastRenewSummary() (*renew.ServerInfoRenewal, error) {
 	panic("not used in this test")
 }
+
 func (s *fakeSession) PutLastRenewSummary(*renew.ServerInfoRenewal) error {
 	panic("not used in this test")
 }

@@ -2,7 +2,7 @@ package util
 
 import "strings"
 
-// This is default notation in dns3l
+// GetDomainFQDNDot is default notation in dns3l
 func GetDomainFQDNDot(d string) string {
 	if !strings.HasSuffix(d, ".") {
 		d = d + "."
@@ -11,7 +11,8 @@ func GetDomainFQDNDot(d string) string {
 	return d
 }
 
-//Some providers like Infoblox don't want the dot despite being a FQDN...
+// GetDomainNoFQDNDot is used for providers like Infoblox,
+// which don't want the dot despite being a FQDN...
 func GetDomainNoFQDNDot(d string) string {
 	return strings.TrimSuffix(d, ".")
 }

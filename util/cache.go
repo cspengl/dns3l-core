@@ -5,10 +5,10 @@ import (
 	"time"
 )
 
-//Returns a cached value for a specified amount of time (timeout)
-//Concurrent requests for the cached value are blocked, later requests
-//are supplied with the cached value retrieved from earlier requests
-type SingleValCache[T interface{}] struct {
+// SingleValCache a cached value for a specified amount of time (timeout)
+// Concurrent requests for the cached value are blocked, later requests
+// are supplied with the cached value retrieved from earlier requests
+type SingleValCache[T any] struct {
 	l       sync.Mutex
 	Timeout time.Duration
 	time    time.Time
@@ -34,7 +34,6 @@ func (v *SingleValCache[T]) GetCached(fetch func() (T, error)) (T, error) {
 	v.time = now
 	v.valid = true
 	return v.value, nil
-
 }
 
 func (v *SingleValCache[T]) Invalidate() {

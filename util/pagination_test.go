@@ -49,8 +49,8 @@ func TestPaginationLimitOffset(t *testing.T) {
 
 }
 
-func newTestReq(t *testing.T, rawUrl string) *http.Request {
-	r, err := url.Parse(rawUrl)
+func newTestReq(t *testing.T, rawURL string) *http.Request {
+	r, err := url.Parse(rawURL)
 	assert.NoError(t, err)
 	return &http.Request{URL: r}
 }
