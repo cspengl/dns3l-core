@@ -15,17 +15,20 @@ type Service struct {
 	NoBootstrapCert bool
 
 	server  *http.Server
+	Status  ServerStatusProvider
 	router  *mux.Router
 	running bool
 	runerr  error
 }
 
 func (s *Service) GetV1() *V1 {
-	return &V1{s}
+	return &V1{
+		ServerStatus: s.Status,
+		Service:      s,
+	}
 }
 
 func (s *Service) Run() error {
-
 	err := s.prepare()
 	if err != nil {
 		return err
@@ -37,7 +40,6 @@ func (s *Service) Run() error {
 }
 
 func (s *Service) RunAsync() error {
-
 	err := s.prepare()
 	if err != nil {
 		return err
@@ -55,7 +57,6 @@ func (s *Service) RunAsync() error {
 	}()
 
 	return nil
-
 }
 
 func (s *Service) Stop() error {
@@ -72,7 +73,6 @@ func (s *Service) runRaw(r *mux.Router) error {
 }
 
 func (s *Service) prepare() error {
-
 	db := s.Config.DB
 
 	err := db.Init()

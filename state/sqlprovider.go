@@ -163,7 +163,6 @@ func (c *SQLDBProviderDefault) TestDBConn() error {
 	if err != nil {
 		return fmt.Errorf("problems while obtaining established database connection: %v", err)
 	}
-	defer util.LogDefer(log, db.Close)
 	err = db.Ping()
 	if err != nil {
 		return fmt.Errorf("problems while pinging database: %v", err)
@@ -174,6 +173,7 @@ func (c *SQLDBProviderDefault) TestDBConn() error {
 }
 
 func (c *SQLDBProviderDefault) GetHealth() util.Health {
+	var message string
 	healthy, err := util.CheckHealth(
 		func() (bool, error) {
 			err := c.TestDBConn()
@@ -183,9 +183,12 @@ func (c *SQLDBProviderDefault) GetHealth() util.Health {
 			return true, nil
 		},
 	)
+	if err != nil {
+		message = err.Error()
+	}
 	return util.Health{
 		Healthy:  healthy,
-		Message:  err.Error(),
+		Message:  message,
 		Endpoint: c.URL,
 	}
 }

@@ -11,14 +11,8 @@ import (
 
 func (s *V1) GetServerStatus() (*apiv1.ServerStatus, error) {
 	s.logAction(nil, "GetServerStatus")
-
-	provider := &serverStatusProviderCached{
-		provider: &serverStatusProviderImpl{
-			config: s.Service.Config,
-		},
-		lifetime: 5 * time.Second,
-	}
-	return provider.GetServerStatus()
+	
+	return s.ServerStatus.GetServerStatus()
 }
 
 type ServerStatusProvider interface {
@@ -31,8 +25,13 @@ type serverStatusProviderImpl struct {
 
 func (p *serverStatusProviderImpl) GetServerStatus() (*apiv1.ServerStatus, error) {
 	status := &apiv1.ServerStatus{
-		Cached: false,
-		Age:    0,
+		DNS:      make([]apiv1.HealthInfo, 0),
+		CA:       make([]apiv1.HealthInfo, 0),
+		DB:       make([]apiv1.HealthInfo, 0),
+		Auth:     make([]apiv1.HealthInfo, 0),
+		Resolver: make([]apiv1.HealthInfo, 0),
+		Cached:   false,
+		Age:      0,
 	}
 
 	// Get DNS Status
@@ -107,6 +106,15 @@ func (p *serverStatusProviderImpl) GetServerStatus() (*apiv1.ServerStatus, error
 	return status, nil
 }
 
+func NewCachingStatusProvider(cfg *Config,lifetime time.Duration) *serverStatusProviderCached {
+	return &serverStatusProviderCached{
+		provider: &serverStatusProviderImpl{
+			config: cfg,
+		},
+		lifetime: lifetime,
+	}
+}
+
 type serverStatusProviderCached struct {
 	lock      sync.RWMutex
 	provider  ServerStatusProvider
@@ -117,7 +125,7 @@ type serverStatusProviderCached struct {
 
 func (p *serverStatusProviderCached) GetServerStatus() (*apiv1.ServerStatus, error) {
 	p.lock.RLock()
-	if p.cache != nil || time.Since(p.lastFetch) > p.lifetime {
+	if p.cache != nil && time.Since(p.lastFetch) < p.lifetime {
 		defer p.lock.RUnlock()
 		status := *p.cache
 		status.Cached = true
